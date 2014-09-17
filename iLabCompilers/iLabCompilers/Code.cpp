@@ -6,7 +6,7 @@ int main()
 {
 	setlocale(LC_ALL, "Russian");
 
-	cout << "Hello, I'm a test     куку Ы" << endl;
+	cout << "Hello, I'm a test  тест кирилического текста" << endl;
 
 	system("pause");
 	return 0;
