@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1411138288 source:/data/MIPT/GitHub/for_all/1_ex_inf/main.cpp
+	<iostream>
+	<unistd.h>
+	<string.h>
+	<vector>
+
