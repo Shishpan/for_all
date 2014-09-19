@@ -1,8 +1,8 @@
 #include <iostream>
 #include <unistd.h>
 #include <string.h>
+#include <malloc.h>
 #include <vector>
-//#include <stdio.h>
 
 using namespace std;
 
@@ -14,11 +14,13 @@ int main(int argc, char * argv[], char * envp[])
 	char tmpstr[256] = "";
 	vector <int> time;
 	vector <string> path;
-	vector <vector <string>> key;
+	char** key;
 	int counter = 0;
-	char* control;
+
+
 	while (fgets(tmpstr, 256, fp))
 	{
+		key = (char **)realloc(key, (counter + 1)*sizeof(char[256]));
 		string tmp(tmpstr);
 
 		int position = tmp.find(" ",0);
@@ -27,6 +29,8 @@ int main(int argc, char * argv[], char * envp[])
 		tmp.erase(0,position + 1);
 
 		position = tmp.find(" ",0);
+		if (position < 0)
+				position = tmp.length() - 1;
 		tok = tmp.substr(0,position);
 		path.push_back(tok.c_str());
 		tmp.erase(0,position + 1);
@@ -34,20 +38,26 @@ int main(int argc, char * argv[], char * envp[])
 		position = tmp.find(" ", 0);
 		if (position < 0)
 				position = tmp.length() - 1;
-		while (position > 0)
+		if (position < 0)
 		{
-			tok = tmp.substr(0, position);
-			if (key.size() < counter + 1)
-				key.resize(counter + 1);
-			key[counter].push_back(tok);
-			tmp.erase(0, position + 1);
-			position = tmp.find(" ", 0);
-			if (position < 0)
-				position = tmp.length() - 1;
+//			key.resize(counter + 1);
+			key[counter] = NULL;
 		}
+		else
+			while (position > 0)
+			{
+				tok = tmp.substr(0, position);
+				if (key.size() < counter + 1)
+					key.resize(counter + 1);
+				key[counter].push_back((char*)tok.c_str());
+				tmp.erase(0, position + 1);
+				position = tmp.find(" ", 0);
+				if (position < 0)
+					position = tmp.length() - 1;
+			}
 		counter++;
 	}
-
+/*
 	for (vector <int> :: iterator i = time.begin(); i != time.end(); i++)
 		cout << *i << endl;
 
@@ -56,10 +66,27 @@ int main(int argc, char * argv[], char * envp[])
 		cout << *i << endl;
 	cout << endl;
 
-	for (vector <vector <string>> :: iterator i = key.begin(); i != key.end(); i++)
-	{	for (vector <string> :: iterator j = i->begin(); j != i->end(); j++)
-			cout << *j << " ";
+	for (vector <vector <const char*>> :: iterator i = key.begin(); i != key.end(); i++)
+	{
+		if (*i != (vector <const char*>)NULL)
+		{	for (vector <const char*> :: iterator j = i->begin(); j != i->end(); j++)
+				cout << *j << " ";
+		}
+		else
+			cout << "Keys not found";
 		cout << endl;
+	}
+	*/
+	for (int i = 0; i < counter; i++)
+	{
+		if (fork() > 0)
+		{
+			sleep(time[i]);
+			execv(path[i].c_str(), &key[i][0]);
+		}
+	}
+	while(1)
+	{
 	}
 
     return 0;

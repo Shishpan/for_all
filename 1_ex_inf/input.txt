@@ -1,3 +1,2 @@
-5 /bin/ls -al -f -xuy
-10 /bin/git status
-359 /ilwjej/lkjzcxlk/qoowidi
+5 /bin/ls -l
+7 /bin/ls -al
