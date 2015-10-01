@@ -1,0 +1,14 @@
+--- oldX86ISelLowering.cpp	2015-10-01 17:30:45.426938658 +0300
++++ X86ISelLowering.cpp	2015-09-29 03:20:26.621021212 +0300
+@@ -10783,8 +10783,9 @@
+   if (SDValue Unpck =
+           lowerVectorShuffleWithUNPCK(DL, MVT::v8i64, Mask, V1, V2, DAG))
+     return Unpck;
+-
+-  return lowerVectorShuffleWithPERMV(DL, MVT::v8i64, Mask, V1, V2, DAG);
++  if (Subtarget->is64Bit())
++      return lowerVectorShuffleWithPERMV(DL, MVT::v8i64, Mask, V1, V2, DAG);
++  return SDValue();
+ }
+ 
+ /// \brief Handle lowering of 16-lane 32-bit integer shuffles.
