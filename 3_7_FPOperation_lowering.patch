@@ -1,0 +1,118 @@
+--- lib/Target/X86/X86ISelLowering.cpp	2015/12/07 14:22:39	254912
++++ lib/Target/X86/X86ISelLowering.cpp	2015/12/07 14:33:34	254913
+@@ -1340,6 +1340,7 @@
+     setOperationAction(ISD::FDIV,               MVT::v16f32, Legal);
+     setOperationAction(ISD::FSQRT,              MVT::v16f32, Legal);
+     setOperationAction(ISD::FNEG,               MVT::v16f32, Custom);
++    setOperationAction(ISD::FABS,               MVT::v16f32, Custom);
+ 
+     setOperationAction(ISD::FADD,               MVT::v8f64, Legal);
+     setOperationAction(ISD::FSUB,               MVT::v8f64, Legal);
+@@ -1347,6 +1348,7 @@
+     setOperationAction(ISD::FDIV,               MVT::v8f64, Legal);
+     setOperationAction(ISD::FSQRT,              MVT::v8f64, Legal);
+     setOperationAction(ISD::FNEG,               MVT::v8f64, Custom);
++    setOperationAction(ISD::FABS,               MVT::v8f64, Custom);
+     setOperationAction(ISD::FMA,                MVT::v8f64, Legal);
+     setOperationAction(ISD::FMA,                MVT::v16f32, Legal);
+ 
+@@ -26339,6 +26341,31 @@
+   return SDValue();
+ }
+ 
++static SDValue lowerX86FPLogicOp(SDNode *N, SelectionDAG &DAG,
++                              const X86Subtarget *Subtarget) {
++  EVT VT = N->getValueType(0);
++  if (VT.is512BitVector() && !Subtarget->hasDQI()) {
++    // VXORPS, VORPS, VANDPS, VANDNPS are supported only under DQ extention.
++    // These logic operations may be executed in the integer domain.
++    SDLoc dl(N);
++    MVT IntScalar = MVT::getIntegerVT(VT.getScalarSizeInBits());
++    MVT IntVT = MVT::getVectorVT(IntScalar, VT.getVectorNumElements());
++
++    SDValue Op0 = DAG.getNode(ISD::BITCAST, dl, IntVT, N->getOperand(0));
++    SDValue Op1 = DAG.getNode(ISD::BITCAST, dl, IntVT, N->getOperand(1));
++    unsigned IntOpcode = 0;
++    switch (N->getOpcode()) {
++      default: llvm_unreachable("Unexpected FP logic op");
++      case X86ISD::FOR: IntOpcode = ISD::OR; break;
++      case X86ISD::FXOR: IntOpcode = ISD::XOR; break;
++      case X86ISD::FAND: IntOpcode = ISD::AND; break;
++      case X86ISD::FANDN: IntOpcode = X86ISD::ANDNP; break;
++    }
++    SDValue IntOp = DAG.getNode(IntOpcode, dl, IntVT, Op0, Op1);
++    return  DAG.getNode(ISD::BITCAST, dl, VT, IntOp);
++  }
++  return SDValue();
++}
+ /// Do target-specific dag combines on X86ISD::FOR and X86ISD::FXOR nodes.
+ static SDValue PerformFORCombine(SDNode *N, SelectionDAG &DAG) {
+   assert(N->getOpcode() == X86ISD::FOR || N->getOpcode() == X86ISD::FXOR);
+@@ -24511,7 +24511,8 @@
+ }
+ 
+ /// Do target-specific dag combines on X86ISD::FOR and X86ISD::FXOR nodes.
+-static SDValue PerformFORCombine(SDNode *N, SelectionDAG &DAG) {
++static SDValue PerformFORCombine(SDNode *N, SelectionDAG &DAG,
++                                         const X86Subtarget *Subtarget) {
+   assert(N->getOpcode() == X86ISD::FOR || N->getOpcode() == X86ISD::FXOR);
+ 
+   // F[X]OR(0.0, x) -> x
+@@ -24523,7 +24523,7 @@
+   if (ConstantFPSDNode *C = dyn_cast<ConstantFPSDNode>(N->getOperand(1)))
+     if (C->getValueAPF().isPosZero())
+       return N->getOperand(0);
+-  return SDValue();
++  return lowerX86FPLogicOp(N, DAG, Subtarget);
+ }
+ 
+ /// Do target-specific dag combines on X86ISD::FMIN and X86ISD::FMAX nodes.
+@@ -26391,7 +26406,8 @@
+ }
+ 
+ /// Do target-specific dag combines on X86ISD::FAND nodes.
+-static SDValue PerformFANDCombine(SDNode *N, SelectionDAG &DAG) {
++static SDValue PerformFANDCombine(SDNode *N, SelectionDAG &DAG,
++                                  const X86Subtarget *Subtarget) {
+   // FAND(0.0, x) -> 0.0
+   if (ConstantFPSDNode *C = dyn_cast<ConstantFPSDNode>(N->getOperand(0)))
+     if (C->getValueAPF().isPosZero())
+@@ -26402,11 +26418,12 @@
+     if (C->getValueAPF().isPosZero())
+       return N->getOperand(1);
+ 
+-  return SDValue();
++  return lowerX86FPLogicOp(N, DAG, Subtarget);
+ }
+ 
+ /// Do target-specific dag combines on X86ISD::FANDN nodes
+-static SDValue PerformFANDNCombine(SDNode *N, SelectionDAG &DAG) {
++static SDValue PerformFANDNCombine(SDNode *N, SelectionDAG &DAG,
++                                   const X86Subtarget *Subtarget) {
+   // FANDN(0.0, x) -> x
+   if (ConstantFPSDNode *C = dyn_cast<ConstantFPSDNode>(N->getOperand(0)))
+     if (C->getValueAPF().isPosZero())
+@@ -26417,7 +26434,7 @@
+     if (C->getValueAPF().isPosZero())
+       return N->getOperand(1);
+ 
+-  return SDValue();
++  return lowerX86FPLogicOp(N, DAG, Subtarget);
+ }
+ 
+ static SDValue PerformBTCombine(SDNode *N,
+@@ -25386,11 +25386,11 @@
+   case ISD::FADD:           return PerformFADDCombine(N, DAG, Subtarget);
+   case ISD::FSUB:           return PerformFSUBCombine(N, DAG, Subtarget);
+   case X86ISD::FXOR:
+-  case X86ISD::FOR:         return PerformFORCombine(N, DAG);
++  case X86ISD::FOR:         return PerformFORCombine(N, DAG, Subtarget);
+   case X86ISD::FMIN:
+   case X86ISD::FMAX:        return PerformFMinFMaxCombine(N, DAG);
+-  case X86ISD::FAND:        return PerformFANDCombine(N, DAG);
+-  case X86ISD::FANDN:       return PerformFANDNCombine(N, DAG);
++  case X86ISD::FAND:        return PerformFANDCombine(N, DAG, Subtarget);
++  case X86ISD::FANDN:       return PerformFANDNCombine(N, DAG, Subtarget);
+   case X86ISD::BT:          return PerformBTCombine(N, DAG, DCI);
+   case X86ISD::VZEXT_MOVL:  return PerformVZEXT_MOVLCombine(N, DAG);
+   case ISD::ANY_EXTEND:
