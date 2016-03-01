@@ -1,0 +1,9 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhist_cnt =7
+let g:netrw_dirhist_1='/export/users/nightly/ispc_mic_test/ispc/alloy_results_2016_02_29_01_13_05'
+let g:netrw_dirhist_2='/export/users/shishpan/ispc/alloy_results_2016_03_01_18_03_02'
+let g:netrw_dirhist_3='/export/users/shishpan/ispc/alloy_results_2016_03_01_18_09_19'
+let g:netrw_dirhist_4='/export/users/shishpan/ispc/alloy_results_2016_03_01_18_27_45'
+let g:netrw_dirhist_5='/export/users/nightly/ispc_mic_test/ispc/alloy_results_2016_02_28_01_42_10'
+let g:netrw_dirhist_6='/export/users/nightly/ispc_mic_test/ispc/alloy_results_2016_02_29_01_43_06'
+let g:netrw_dirhist_7='/export/users/nightly/ispc_mic_test/ispc/alloy_results_2016_02_29_01_13_15'
